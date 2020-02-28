@@ -3,11 +3,11 @@ const dns = require("dns").promises;
 
 const icmpSocket = raw.createSocket({ protocol: raw.Protocol.ICMP });
 
-const MAX_HOPS = 64;
+const MAX_HOPS = 30;
 const MAX_TIMEOUT_IN_MILLISECONDS = 1000;
 const DESTINATION_HOST = process.argv[process.argv.length - 1];
 const NO_REVERSE_LOOKUP = process.argv[process.argv.length - 2] === "-n";
-
+console.log(process.argv);
 let DESTINATION_IP;
 
 let ttl = 1;
@@ -86,27 +86,23 @@ function handleReply(ip, symbolicAddress) {
   }
 
   if ((ip == DESTINATION_IP && tries === 3) || ttl >= MAX_HOPS) {
-    console.log("");
+    console.log("\nDone");
     process.exit();
   }
 
   previousIP = ip;
 
-  setTimeout(() => sendPacket(), 0);
+  sendPacket();
 }
 
-setTimeout(
-  () =>
-    icmpSocket.on("message", async function(buffer, ip) {
-      try {
-        let symbolicAddress;
-        if (!NO_REVERSE_LOOKUP) {
-          symbolicAddress = await dns.reverse(ip);
-        }
-        handleReply(ip, symbolicAddress[0]);
-      } catch (e) {
-        handleReply(ip);
-      }
-    }),
-  0
-);
+icmpSocket.on("message", async function(buffer, ip) {
+  try {
+    let symbolicAddress;
+    if (!NO_REVERSE_LOOKUP) {
+      symbolicAddress = await dns.reverse(ip);
+    }
+    handleReply(ip, symbolicAddress[0]);
+  } catch (e) {
+    handleReply(ip);
+  }
+});

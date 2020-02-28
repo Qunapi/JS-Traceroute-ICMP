@@ -1,6 +1,6 @@
 const dgram = require("dgram");
 const raw = require("raw-socket");
-// const dns = require("dns-then");
+const dns = require("dns-then");
 
 const icmpSocket = raw.createSocket({ protocol: raw.Protocol.ICMP });
 const udpSocket = dgram.createSocket("udp4");
