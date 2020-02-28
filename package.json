@@ -4,7 +4,7 @@
   "description": "",
   "main": "traceroute.js",
   "dependencies": {
-    "dns-then": "^0.1.0",
+    "n": "^6.3.1",
     "raw-socket": "^1.7.0"
   },
   "devDependencies": {

@@ -1,5 +1,5 @@
 const raw = require("raw-socket");
-const dns = require("dns-then");
+const dns = require("dns").promises;
 
 const icmpSocket = raw.createSocket({ protocol: raw.Protocol.ICMP });
 
@@ -20,7 +20,7 @@ let previousIP;
 startTrace();
 
 async function startTrace() {
-  DESTINATION_IP = await dns.lookup(DESTINATION_HOST);
+  DESTINATION_IP = (await dns.lookup(DESTINATION_HOST)).address;
   console.log(
     `traceroute to ${DESTINATION_HOST} (${DESTINATION_IP}), ${MAX_HOPS} hops max, 42 byte packets`
   );
@@ -35,8 +35,8 @@ function sendPacket() {
   tries++;
 
   var header = Buffer.alloc(12);
-  header.writeUInt8(0x8, 0); //type
-  header.writeUInt8(0x0, 1); //id
+  header.writeUInt8(0x8, 0); //type (echo request)
+  header.writeUInt8(0x0, 1); //if type = 8 - doesn't matter
   icmpSocket.setOption(
     raw.SocketLevel.IPPROTO_IP,
     raw.SocketOption.IP_TTL,
