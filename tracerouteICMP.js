@@ -5,6 +5,7 @@ const icmpSocket = raw.createSocket({ protocol: raw.Protocol.ICMP });
 
 const MAX_HOPS = 30;
 const MAX_TIMEOUT_IN_MILLISECONDS = 1000;
+
 const DESTINATION_HOST = process.argv[process.argv.length - 1];
 const NO_REVERSE_LOOKUP = process.argv[process.argv.length - 2] === "-n";
 console.log(process.argv);
@@ -12,9 +13,9 @@ let DESTINATION_IP;
 
 let ttl = 1;
 let tries = 0;
+let timeout;
 
 let startTime;
-let timeout;
 let previousIP;
 
 startTrace();
@@ -27,42 +28,59 @@ async function startTrace() {
   sendPacket();
 }
 
+const MAX_TRIES = 3;
+
 function sendPacket() {
-  if (tries >= 3) {
+  if (tries >= MAX_TRIES) {
     tries = 0;
     ttl++;
   }
   tries++;
 
-  var header = Buffer.alloc(12);
-  header.writeUInt8(0x8, 0); //type (echo request)
-  header.writeUInt8(0x0, 1); //if type = 8 - doesn't matter
+  const ECHO_REQUEST = 8;
+  const OFFSET = 0;
+  const MIN_ICMP_HEADER_SIZE = 8;
+
+  var header = Buffer.alloc(MIN_ICMP_HEADER_SIZE);
+
+  header.writeUInt8(ECHO_REQUEST, OFFSET); //type (echo request)
+  // header.writeUInt8(0x0, 1); //if type = 8 - doesn't matter
   icmpSocket.setOption(
     raw.SocketLevel.IPPROTO_IP,
     raw.SocketOption.IP_TTL,
     ttl
   );
-
+  const HEADER_SIZE = 2;
+  const CHECKSUM_OFFSET = 2;
   header.writeUInt16BE(
-    raw.createChecksum({ buffer: header, length: 2, offset: 0 }),
-    2
+    raw.createChecksum({ buffer: header, length: HEADER_SIZE, offset: OFFSET }),
+    CHECKSUM_OFFSET
   );
 
   startTime = process.hrtime();
-  icmpSocket.send(header, 0, 12, DESTINATION_IP, function(err) {
-    if (err) throw err;
-    timeout = setTimeout(handleReply, MAX_TIMEOUT_IN_MILLISECONDS);
-  });
+  icmpSocket.send(
+    header,
+    OFFSET,
+    MIN_ICMP_HEADER_SIZE,
+    DESTINATION_IP,
+    function(err) {
+      if (err) throw err;
+      timeout = setTimeout(handleReply, MAX_TIMEOUT_IN_MILLISECONDS);
+    }
+  );
 }
 
 function handleReply(ip, symbolicAddress) {
   if (timeout) {
     clearTimeout(timeout);
   }
+
+  const NANOSECONDS = 1;
+  const MS_MODIFIER = 1000000;
   if (ip) {
-    const elapsedTime = `${(process.hrtime(startTime)[1] / 1000000).toFixed(
-      3
-    )} ms`;
+    const elapsedTime = `${(
+      process.hrtime(startTime)[NANOSECONDS] / MS_MODIFIER
+    ).toFixed(3)} ms`;
 
     if (ip === previousIP) {
       process.stdout.write(`  ${elapsedTime}`);
