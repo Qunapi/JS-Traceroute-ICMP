@@ -8,7 +8,6 @@ const MAX_TIMEOUT_IN_MILLISECONDS = 1000;
 
 const DESTINATION_HOST = process.argv[process.argv.length - 1];
 const NO_REVERSE_LOOKUP = process.argv[process.argv.length - 2] === "-n";
-console.log(process.argv);
 let DESTINATION_IP;
 
 let ttl = 1;
@@ -39,29 +38,33 @@ function sendPacket() {
 
   const ECHO_REQUEST = 8;
   const OFFSET = 0;
-  const MIN_ICMP_HEADER_SIZE = 8;
+  const ICMP_PACKET_SIZE = 12;
 
-  var header = Buffer.alloc(MIN_ICMP_HEADER_SIZE);
+  var icmpPacket = Buffer.alloc(ICMP_PACKET_SIZE);
 
-  header.writeUInt8(ECHO_REQUEST, OFFSET); //type (echo request)
-  // header.writeUInt8(0x0, 1); //if type = 8 - doesn't matter
+  icmpPacket.writeUInt8(ECHO_REQUEST, OFFSET);
   icmpSocket.setOption(
     raw.SocketLevel.IPPROTO_IP,
     raw.SocketOption.IP_TTL,
     ttl
   );
-  const HEADER_SIZE = 2;
+  const PACKET_SIZE = 8;
   const CHECKSUM_OFFSET = 2;
-  header.writeUInt16BE(
-    raw.createChecksum({ buffer: header, length: HEADER_SIZE, offset: OFFSET }),
+
+  icmpPacket.writeUInt16BE(
+    raw.createChecksum({
+      buffer: icmpPacket,
+      length: PACKET_SIZE,
+      offset: OFFSET
+    }),
     CHECKSUM_OFFSET
   );
 
   startTime = process.hrtime();
   icmpSocket.send(
-    header,
+    icmpPacket,
     OFFSET,
-    MIN_ICMP_HEADER_SIZE,
+    ICMP_PACKET_SIZE,
     DESTINATION_IP,
     function(err) {
       if (err) throw err;
@@ -104,7 +107,7 @@ function handleReply(ip, symbolicAddress) {
   }
 
   if ((ip == DESTINATION_IP && tries === 3) || ttl >= MAX_HOPS) {
-    console.log("\nDone");
+    console.log("\n");
     process.exit();
   }
 
